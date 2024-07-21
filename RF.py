@@ -7,9 +7,9 @@ import seaborn as sns
 import streamlit as st
 
 # Configuración de Streamlit
-st.title('Importancia de las Características en el Modelo de Random Forest')
+st.title('Modelo de Random Forest para Predicción de Kilos de Pesca')
 st.write("""
-Esta aplicación permite visualizar la importancia de las características en un modelo de Random Forest para la predicción del volumen de captura.
+Esta aplicación permite construir y evaluar un modelo de Random Forest para predecir el volumen de captura de pesca basado en diversas características.
 """)
 
 @st.cache
@@ -28,6 +28,12 @@ def procesar_datos(data, especie_especifica):
     data_especie = pd.get_dummies(data_especie, columns=['Aparejo', 'Origen', 'Motor', 'HP'])
     x = data_especie.drop(columns=['Especie', 'Kilos', 'Talla', 'Precio_Kilo'])
     y = data_especie['Kilos']
+
+    # Convertir a numérico y manejar valores nulos
+    x = x.apply(pd.to_numeric, errors='coerce')
+    x = x.fillna(0)
+    y = y.fillna(0)
+
     return x, y
 
 def entrenar_modelo(x_train, y_train):
