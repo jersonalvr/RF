@@ -21,8 +21,8 @@ df = pd.read_excel('data.xlsx')
 df['Inicio_Faena'] = pd.to_datetime(df['Inicio_Faena'], format='%d %m %Y %H:%M')
 
 # Verificar la estructura de los datos
-st.write("Información del DataFrame:")
-st.write(df.info())
+st.write("### Vista previa de los datos")
+st.write(df.head())
 
 # Agrupar por especie y aparejo, sumando los kilos
 df_agrupado = df.groupby(['Especie', 'Aparejo'])['Volumen_Kg'].sum().unstack()
@@ -109,9 +109,13 @@ plt.title("Correlación entre variables", fontsize=17, y=1.02)
 plt.tight_layout()
 st.pyplot(fig)
 
-# Exportar la matriz de correlación
-correlation_matrix.to_csv('matriz_correlacion.csv', index=True)
-st.write("La matriz de correlación ha sido exportada como 'matriz_correlacion.csv'.")
+# Descargar la matriz de correlación
+st.subheader('Descargar Matriz de Correlación')
+csv = correlation_matrix.to_csv(index=True)
+st.download_button(label="Descargar Matriz de Correlación como CSV",
+                   data=csv,
+                   file_name='matriz_correlacion.csv',
+                   mime='text/csv')
 
 # Normalizar los datos
 scaler = MinMaxScaler()
