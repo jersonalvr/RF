@@ -1,12 +1,12 @@
-import streamlit as st
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
+import streamlit as st
+from sklearn.metrics import mean_squared_error
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
 
 # Título y descripción de la aplicación
 st.title('Modelo de Random Forest para Pesca Artesanal en Coishco')
@@ -17,10 +17,6 @@ Esta aplicación permite visualizar la importancia de las características en un
 # Cargar los datos
 df = pd.read_excel('data.xlsx')
 
-# Convertir la columna 'Inicio_Faena' a datetime
-df['Inicio_Faena'] = pd.to_datetime(df['Inicio_Faena'], format='%d %m %Y %H:%M')
-
-# Verificar la estructura de los datos
 st.write("### Vista previa de los datos")
 st.write(df.head())
 
@@ -83,24 +79,44 @@ ax.set_ylabel('Ventas')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# Crear un nuevo DataFrame y agregar la columna Hora_Flotante
-df_horas = df.drop(columns=['Inicio_Faena'])
-df_horas['Hora'] = df['Inicio_Faena'].dt.time
-df_horas['Hora_Flotante'] = df_horas['Hora'].apply(lambda x: x.hour + x.minute/60)
+# Convertir la columna 'Inicio_Faena' a datetime
+df['Inicio_Faena'] = pd.to_datetime(df['Inicio_Faena'], format='%d %m %Y %H:%M')
+
+# Agregar una nueva columna 'Hora' con solo la hora de 'Inicio_Faena'
+df['Hora'] = df['Inicio_Faena'].dt.time
+
+# Transformar la columna 'Hora' en un valor flotante (hora + minutos/60)
+df['Hora_Float'] = df['Hora'].apply(lambda x: x.hour + x.minute/60)
+
+# Crear un nuevo DataFrame eliminando las columnas 'Inicio_Faena' y 'Hora'
+df_ = df.drop(columns=['Inicio_Faena', 'Hora'])
 
 # Graficar la distribución de las ventas por hora del día
 st.subheader('Distribución de las Ventas por Hora del Día')
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.histplot(df_horas, x='Hora_Flotante', weights='Venta', bins=24, kde=True)
+sns.histplot(df_, x='Hora_Float', weights='Venta', bins=24, kde=True)
 ax.set_xlabel('Hora del Día')
 ax.set_ylabel('Distribución de las Ventas')
 ax.set_title('Distribución de las Ventas por Hora del Día')
 st.pyplot(fig)
 
+# Seleccionamos las columnas numéricas
+numeric_columns = df_.select_dtypes(include=['int64', 'float64']).columns
+
+# Crear el escalador
+scaler = MinMaxScaler()
+
+# Aplicar la normalización
+df_normalized = df_.copy()
+df_normalized[numeric_columns] = scaler.fit_transform(df_[numeric_columns])
+
+st.write("### Datos normalizados")
+st.write(df_normalized.head())
+
 # Calcular y graficar la matriz de correlación
 st.subheader('Matriz de Correlación')
-selected_columns = ['Hora_Flotante', 'Horas_Faena', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta', 'Caballos_Motor', 'Tripulantes']
-correlation_matrix = df_horas[selected_columns].corr()
+selected_columns = ['Hora_Float', 'Horas_Faena', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta', 'Caballos_Motor', 'Tripulantes']
+correlation_matrix = df_normalized[selected_columns].corr()
 
 fig, ax = plt.subplots(figsize=(10, 8))
 sns.heatmap(data=correlation_matrix, annot=True, mask=np.triu(np.ones_like(correlation_matrix, dtype=bool)),
@@ -117,58 +133,56 @@ st.download_button(label="Descargar Matriz de Correlación como CSV",
                    file_name='matriz_correlacion.csv',
                    mime='text/csv')
 
-# Normalizar los datos
-scaler = MinMaxScaler()
-columns_to_normalize = [
-    'Horas_Faena', 'Volumen_Kg', 'Talla_cm',
-    'Precio_Kg', 'Venta', 'Caballos_Motor', 
-    'Tripulantes', 'Hora_Flotante'
-]
-df_horas_normalizado = pd.DataFrame(scaler.fit_transform(df_horas[columns_to_normalize]), columns=columns_to_normalize)
+# Seleccionar la especie
+especie_especifica = st.selectbox("Seleccionar la especie", df_normalized['Especie'].unique())
 
-# Mostrar las primeras filas del DataFrame normalizado
-st.write("Primeras filas del DataFrame normalizado:")
-st.write(df_horas_normalizado.head())
+# Procesar los datos del DataFrame
+def procesar_datos(df, especie):
+    df_especie = df[df['Especie'] == especie]
+    df_especie = pd.get_dummies(df_especie, columns=['Aparejo', 'Origen', 'Marca_Motor', 'Modelo_Motor'], drop_first=True)
+    x = df_especie.drop(columns=['Especie', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta'])  # Se excluye 'Venta'
+    y = df_especie['Volumen_Kg']
+    return x.apply(pd.to_numeric, errors='coerce').fillna(0), y.fillna(0)
 
-# Definir las variables independientes y dependientes
-X = df_horas_normalizado[['Horas_Faena', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta', 'Caballos_Motor', 'Tripulantes', 'Hora_Flotante']]
-X = pd.get_dummies(X, drop_first=True)
-y = df_horas_normalizado['Venta']
+# Entrenar el modelo de Random Forest
+def entrenar_modelo(x_train, y_train):
+    modelo = RandomForestRegressor(n_estimators=100, random_state=42)
+    modelo.fit(x_train, y_train)
+    return modelo
 
-# Dividir los datos en conjuntos de entrenamiento y prueba
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Mostrar la importancia de las características
+def mostrar_importancia_caracteristicas(modelo, x):
+    importancia = pd.Series(modelo.feature_importances_, index=x.columns)
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=importancia.nlargest(10).values, y=importancia.nlargest(10).index)
+    plt.xlabel('Importancia de la característica')
+    plt.ylabel('Característica')
+    plt.title('Importancia de las características en el modelo de Random Forest')
+    st.pyplot(plt.gcf())
 
-# Crear y entrenar el modelo de Random Forest
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+# Mostrar gráfico de valores reales vs. valores predichos
+def mostrar_valores_vs_predicciones(y_test, y_pred):
+    plt.figure(figsize=(10, 6))
+    plt.scatter(y_test, y_pred, alpha=0.5)
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)  # Línea de referencia
+    plt.xlabel('Valores Reales')
+    plt.ylabel('Valores Predichos')
+    plt.title('Valores Reales vs. Valores Predichos')
+    plt.tight_layout()  # Ajustar diseño para evitar recortes
+    st.pyplot(plt)
 
-# Hacer predicciones y evaluar el modelo
-y_pred = model.predict(X_test)
-r2 = r2_score(y_test, y_pred)
+# Procesar datos y entrenar modelo
+x, y = procesar_datos(df_normalized, especie_especifica)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+modelo_rf = entrenar_modelo(x_train, y_train)
+
+# Evaluar modelo
+y_pred = modelo_rf.predict(x_test)
 mse = mean_squared_error(y_test, y_pred)
+st.write(f'Error cuadrático medio: {mse:.4f}')
 
-st.write(f"Coeficiente de determinación (R^2): {r2}")
-st.write(f"Error cuadrático medio (MSE): {mse}")
+# Mostrar importancia de las características
+mostrar_importancia_caracteristicas(modelo_rf, x)
 
-# Visualización de la importancia de las características
-importances = model.feature_importances_
-indices = np.argsort(importances)[::-1]
-features = X.columns
-
-st.subheader('Importancia de las Características - Random Forest')
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(x=importances[indices], y=features[indices], palette="viridis")
-ax.set_title('Importancia de las Características - Random Forest')
-ax.set_xlabel('Importancia')
-ax.set_ylabel('Características')
-st.pyplot(fig)
-
-# Visualización de los resultados
-st.subheader('Predicción vs Realidad')
-fig, ax = plt.subplots(figsize=(10, 6))
-plt.scatter(y_test, y_pred, color='blue', alpha=0.5)
-plt.plot([0, 1], [0, 1], color='red', linewidth=2)
-ax.set_xlabel('Valores Reales de Venta')
-ax.set_ylabel('Valores Predichos de Venta')
-ax.set_title('Random Forest - Predicción de Venta')
-st.pyplot(fig)
+# Mostrar gráfico de valores reales vs. valores predichos
+mostrar_valores_vs_predicciones(y_test, y_pred)
