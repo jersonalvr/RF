@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -66,16 +66,37 @@ ax.set_ylabel('Kilos')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# Agrupar las ventas por fecha de faena
-df_agrupado = df.groupby('Inicio_Faena')['Venta'].sum()
+fig, ax = plt.subplots()
+df['Millas_Recorridas'].hist(bins=20, ax=ax)
+ax.set_title('Distribución de Millas Recorridas')
+ax.set_xlabel('Millas Recorridas')
+ax.set_ylabel('Frecuencia')
+st.pyplot(fig)
 
-# Graficar la distribución de ventas por fecha de faena
-st.subheader('Distribución de Ventas por Fecha de Faena')
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.boxplot(x='Especie', y='Precio_Kg', data=df, ax=ax)
+ax.set_title('Distribución de Precio por Kg por Especie')
+ax.set_xticks(ax.get_xticks())
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+st.pyplot(fig)
+
+fig, ax = plt.subplots()
+ax.scatter(df['Millas_Recorridas'], df['Ganancia'])
+ax.set_title('Millas Recorridas vs Ganancia')
+ax.set_xlabel('Millas Recorridas')
+ax.set_ylabel('Ganancia')
+st.pyplot(fig)
+
+# Agrupar las ganancias por fecha de faena
+df_agrupado = df.groupby('Inicio_Faena')['Ganancia'].sum()
+
+# Graficar la distribución de ganancias por fecha de faena
+st.subheader('Distribución de ganancias por Fecha de Faena')
 fig, ax = plt.subplots(figsize=(12, 7))
 df_agrupado.plot(ax=ax, legend=True)
-ax.set_title('Distribución de Ventas por Fecha de Faena')
+ax.set_title('Distribución de ganancias por Fecha de Faena')
 ax.set_xlabel('Inicio_Faena')
-ax.set_ylabel('Ventas')
+ax.set_ylabel('Ganancia')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
@@ -115,7 +136,7 @@ st.write(df_normalized.head())
 
 # Calcular y graficar la matriz de correlación
 st.subheader('Matriz de Correlación')
-selected_columns = ['Hora_Float', 'Horas_Faena', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta', 'Caballos_Motor', 'Tripulantes']
+selected_columns = ['Caballos_Motor', 'Millas_Recorridas', 'Volumen_Kg', 'Precio_Kg', 'Talla_cm', 'Venta', 'Costo_Combustible', 'Ganancia', 'Tripulantes', 'Hora_Float']
 correlation_matrix = df_normalized[selected_columns].corr()
 
 fig, ax = plt.subplots(figsize=(10, 8))
@@ -133,56 +154,114 @@ st.download_button(label="Descargar Matriz de Correlación como CSV",
                    file_name='matriz_correlacion.csv',
                    mime='text/csv')
 
-# Seleccionar la especie
-especie_especifica = st.selectbox("Seleccionar la especie", df_normalized['Especie'].unique())
+# Seleccionar la opción (especie o embarcación)
+opcion = st.selectbox("Seleccionar el enfoque", ["Embarcación", "Especie"], key="enfoque_selectbox")
 
-# Procesar los datos del DataFrame
-def procesar_datos(df, especie):
-    df_especie = df[df['Especie'] == especie]
-    df_especie = pd.get_dummies(df_especie, columns=['Aparejo', 'Origen', 'Marca_Motor', 'Modelo_Motor'], drop_first=True)
-    x = df_especie.drop(columns=['Especie', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta'])  # Se excluye 'Venta'
-    y = df_especie['Volumen_Kg']
-    return x.apply(pd.to_numeric, errors='coerce').fillna(0), y.fillna(0)
+# Clave única para cada selección
+if opcion == "Embarcación":
+    seleccion = st.selectbox("Seleccionar la embarcación", df_normalized['Embarcacion'].unique(), key="embarcacion_selectbox")
+else:
+    seleccion = st.selectbox("Seleccionar la especie", df_normalized['Especie'].unique(), key="especie_selectbox")
 
-# Entrenar el modelo de Random Forest
-def entrenar_modelo(x_train, y_train):
-    modelo = RandomForestRegressor(n_estimators=100, random_state=42)
-    modelo.fit(x_train, y_train)
-    return modelo
+def procesar_datos(df, seleccion, es_embarcacion=True):
+    if es_embarcacion:
+        df_seleccion = df[df['Embarcacion'] == seleccion]
+    else:
+        df_seleccion = df[df['Especie'] == seleccion]
+    
+    if df_seleccion.empty:
+        st.error(f"No se encontraron datos para la {'embarcación' if es_embarcacion else 'especie'}: {seleccion}")
+        return None, None
+    
+    df_seleccion = pd.get_dummies(df_seleccion, columns=['Marca_Motor', 'Modelo_Motor', 'Aparejo'], drop_first=True)
+    X = df_seleccion.drop(columns=['Embarcacion', 'Especie', 'Volumen_Kg', 'Talla_cm', 'Precio_Kg', 'Venta', 'Ganancia'])
+    y = df_seleccion['Volumen_Kg'].fillna(0)
+    
+    return X.apply(pd.to_numeric, errors='coerce').fillna(0), y
 
-# Mostrar la importancia de las características
-def mostrar_importancia_caracteristicas(modelo, x):
-    importancia = pd.Series(modelo.feature_importances_, index=x.columns)
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=importancia.nlargest(10).values, y=importancia.nlargest(10).index)
-    plt.xlabel('Importancia de la característica')
-    plt.ylabel('Característica')
-    plt.title('Importancia de las características en el modelo de Random Forest')
-    st.pyplot(plt.gcf())
+def entrenar_modelo_con_curvas(X_train, y_train, X_val, y_val, n_estimators=100):
+    train_errors = []
+    val_errors = []
+    modelo = RandomForestRegressor(warm_start=True, random_state=42)
+    
+    for i in range(1, n_estimators + 1):
+        modelo.set_params(n_estimators=i)
+        modelo.fit(X_train, y_train)
+        
+        train_errors.append(mean_squared_error(y_train, modelo.predict(X_train)))
+        val_errors.append(mean_squared_error(y_val, modelo.predict(X_val)))
+    
+    return modelo, train_errors, val_errors
 
-# Mostrar gráfico de valores reales vs. valores predichos
-def mostrar_valores_vs_predicciones(y_test, y_pred):
-    plt.figure(figsize=(10, 6))
-    plt.scatter(y_test, y_pred, alpha=0.5)
-    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)  # Línea de referencia
-    plt.xlabel('Valores Reales')
-    plt.ylabel('Valores Predichos')
-    plt.title('Valores Reales vs. Valores Predichos')
-    plt.tight_layout()  # Ajustar diseño para evitar recortes
-    st.pyplot(plt)
+# Procesar los datos
+X, y = procesar_datos(df_normalized, seleccion, es_embarcacion=(opcion == "Embarcación"))
 
-# Procesar datos y entrenar modelo
-x, y = procesar_datos(df_normalized, especie_especifica)
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
-modelo_rf = entrenar_modelo(x_train, y_train)
+if X is not None and y is not None:
+    if len(X) > 1:
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        modelo_rf, train_errors, val_errors = entrenar_modelo_con_curvas(X_train, y_train, X_val, y_val)
 
-# Evaluar modelo
-y_pred = modelo_rf.predict(x_test)
-mse = mean_squared_error(y_test, y_pred)
-st.write(f'Error cuadrático medio: {mse:.4f}')
+        # Curvas de entrenamiento y validación
+        st.subheader(f'Curvas de Entrenamiento y Validación - {seleccion} ({opcion})')
+        st.markdown("""
+        Estas curvas muestran cómo de bien nuestro modelo está aprendiendo a predecir el volumen de captura. Si el error de validación es cercano al error de entrenamiento, significa que el modelo es bastante preciso y no se está sobreajustando a los datos de entrenamiento.
+        """)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(range(1, len(train_errors) + 1), train_errors, label='Error de Entrenamiento')
+        ax.plot(range(1, len(val_errors) + 1), val_errors, label='Error de Validación')
+        ax.set_xlabel('Número de Árboles')
+        ax.set_ylabel('Error Cuadrático Medio')
+        ax.legend()
+        st.pyplot(fig)
 
-# Mostrar importancia de las características
-mostrar_importancia_caracteristicas(modelo_rf, x)
+        # Importancia de características
+        st.subheader(f'Importancia de Características - {seleccion} ({opcion})')
+        st.markdown("""
+        La importancia de características nos ayuda a entender cuáles variables son más influyentes en la predicción del volumen de captura. Estas son como los ingredientes principales de una receta, donde algunos tienen un mayor impacto en el resultado final.
+        """)
+        importances = modelo_rf.feature_importances_
+        indices = X_train.columns
+        feature_importances = pd.Series(importances, index=indices).sort_values(ascending=False)
+        
+        if 'Ganancia' in feature_importances.index:
+            feature_importances = feature_importances.drop('Ganancia')
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        feature_importances.plot(kind='bar', ax=ax)
+        ax.set_title(f'Importancia de Características - {seleccion} ({opcion})')
+        ax.set_ylabel('Importancia')
+        st.pyplot(fig)
 
-# Mostrar gráfico de valores reales vs. valores predichos
-mostrar_valores_vs_predicciones(y_test, y_pred)
+        # Valores reales vs predichos
+        st.subheader(f'Valores Reales vs Predichos - {seleccion} ({opcion})')
+        st.markdown("""
+        Este gráfico compara nuestras predicciones con los valores reales observados. Si los puntos se alinean bien con la línea diagonal, significa que nuestro modelo está haciendo un buen trabajo prediciendo el volumen de captura.
+        """)
+        y_val_pred = modelo_rf.predict(X_val)
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.scatter(y_val, y_val_pred, alpha=0.5)
+        ax.plot([y_val.min(), y_val.max()], [y_val.min(), y_val.max()], 'r--', lw=2)
+        ax.set_xlabel('Valores Reales')
+        ax.set_ylabel('Valores Predichos')
+        ax.set_title(f'Valores Reales vs Predichos - {seleccion} ({opcion})')
+        st.pyplot(fig)
+
+        # Mostrar métricas del modelo
+        st.subheader('Métricas del Modelo')
+        st.markdown("""
+        Aquí se muestran algunas métricas clave que nos indican cuán bien está funcionando nuestro modelo:
+        - **MSE (Error Cuadrático Medio):** Indica qué tan lejos están, en promedio, nuestras predicciones de los valores reales.
+        - **MAE (Error Absoluto Medio):** Muestra el promedio de las diferencias absolutas entre las predicciones y los valores reales.
+        - **R2 (Coeficiente de Determinación):** Nos dice qué tan bien las variables explican la variabilidad del resultado.
+        """)
+        mse = mean_squared_error(y_val, y_val_pred)
+        mae = mean_absolute_error(y_val, y_val_pred)
+        r2 = r2_score(y_val, y_val_pred)
+        
+        st.write(f"MSE (Error Cuadrático Medio): {mse:.4f}")
+        st.write(f"MAE (Error Absoluto Medio): {mae:.4f}")
+        st.write(f"R2 (Coeficiente de Determinación): {r2:.4f}")
+        
+    else:
+        st.error("No hay suficientes datos para dividir en conjuntos de entrenamiento y validación.")
