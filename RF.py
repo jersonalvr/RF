@@ -20,6 +20,10 @@ df = pd.read_excel('data.xlsx')
 st.write("### Vista previa de los datos")
 st.write(df.head())
 
+st.write("""
+Comencemos visualizando algunos gráficos estadisticos referentes a la actividad pesquera de la zona
+""")
+
 # Agrupar por especie y aparejo, sumando los kilos
 df_agrupado_kilos = df.groupby(['Especie', 'Aparejo'])['Volumen_Kg'].sum().unstack()
 
@@ -27,12 +31,12 @@ df_agrupado_kilos = df.groupby(['Especie', 'Aparejo'])['Volumen_Kg'].sum().unsta
 df_agrupado_kilos = df_agrupado_kilos.loc[df_agrupado_kilos.sum(axis=1).sort_values().index]
 
 # Seleccionar el tipo de gráfico para los kilos
-opcion_kilos = st.radio("Selecciona el tipo de gráfico para kilos", ('Escala Lineal', 'Escala Logarítmica'), key='kilos')
+opcion_kilos = st.radio("Selecciona el tipo de gráfico para visualizar la distribución de la captura", ('Escala Normal', 'Escala Logarítmica'), key='kilos')
 
 # Graficar de acuerdo a la opción seleccionada para los kilos
 fig, ax = plt.subplots(figsize=(12, 7))
 
-if opcion_kilos == 'Escala Lineal':
+if opcion_kilos == 'Escala Normal':
     st.subheader('Captura total por especie')
     df_agrupado_kilos.plot(kind='bar', ax=ax)
     ax.set_title('Captura total por especie')
@@ -47,26 +51,26 @@ ax.set_xlabel('Especie')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# Seleccionar el tipo de gráfico para las ventas
-opcion_escala = st.radio("Selecciona el tipo de gráfico para las ventas", ('Escala Normal', 'Escala Logarítmica'), key='escala_ventas')
+# Seleccionar el tipo de gráfico para las ganancias
+opcion_ganancia = st.radio("Selecciona el tipo de gráfico para visualizar las ganancias según la especie", ('Escala Normal', 'Escala Logarítmica'), key='escala_ganancia')
 
-# Agrupar los datos por 'Especie' y sumar las ventas
-ventas_por_especie = df.groupby('Especie')['Venta'].sum().sort_values()
+# Agrupar los datos por 'Especie' y sumar las ganancias
+ventas_por_especie = df.groupby('Especie')['Ganancia'].sum().sort_values()
 
 # Crear el gráfico de barras utilizando matplotlib
 fig, ax = plt.subplots(figsize=(10, 6))
 
 # Graficar de acuerdo a la opción seleccionada
-if opcion_escala == 'Escala Normal':
+if opcion_ganancia == 'Escala Normal':
     ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax)
-    ax.set_title('Ventas por Especie (Escala Normal)')
+    ax.set_title('Ganancia por Especie (Escala Normal)')
 else:
     ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax, logy=True)
-    ax.set_title('Ventas por Especie (Escala Logarítmica)')
+    ax.set_title('Ganancia por Especie (Escala Logarítmica)')
 
 # Personalizar el gráfico
 ax.set_xlabel('Especie')
-ax.set_ylabel('Venta (Suma Total)')
+ax.set_ylabel('Ganancia (Suma Total)')
 ax.grid(True, axis='y', linestyle='--', alpha=0.6)
 
 # Mostrar el gráfico en Streamlit
