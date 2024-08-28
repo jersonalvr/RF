@@ -9,6 +9,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Título y descripción de la aplicación
 st.title('Modelo de Random Forest para Pesca Artesanal en Coishco')
@@ -35,45 +37,59 @@ df_agrupado_kilos = df_agrupado_kilos.loc[df_agrupado_kilos.sum(axis=1).sort_val
 # Seleccionar el tipo de gráfico para los kilos
 opcion_kilos = st.radio("Selecciona el tipo de gráfico para visualizar la distribución de la captura", ('Escala Normal', 'Escala Logarítmica'), key='kilos')
 
-# Graficar de acuerdo a la opción seleccionada para los kilos
-fig, ax = plt.subplots(figsize=(12, 7))
-
+# Crear el gráfico interactivo con Plotly
 if opcion_kilos == 'Escala Normal':
     st.subheader('Captura total por especie')
-    df_agrupado_kilos.plot(kind='bar', ax=ax)
-    ax.set_title('Captura total por especie')
-    ax.set_ylabel('Kilos')
+    fig = px.bar(df_agrupado_kilos, 
+                 title='Captura total por especie',
+                 labels={'value': 'Kilos', 'index': 'Especie'},
+                 text_auto=True)
+    fig.update_layout(yaxis_title='Kilos', xaxis_title='Especie', xaxis_tickangle=-45)
 else:
     st.subheader('Captura total por especie (Escala Logarítmica)')
-    df_agrupado_kilos.plot(kind='bar', ax=ax, logy=True)
-    ax.set_title('Captura total por especie (Escala Logarítmica)')
-    ax.set_ylabel('Kilos')
+    fig = px.bar(df_agrupado_kilos, 
+                 title='Captura total por especie (Escala Logarítmica)',
+                 labels={'value': 'Kilos', 'index': 'Especie'},
+                 log_y=True,
+                 text_auto=True)
+    fig.update_layout(yaxis_title='Kilos (Logarítmico)', xaxis_title='Especie', xaxis_tickangle=-45)
 
-ax.set_xlabel('Especie')
-plt.xticks(rotation=45)
-st.pyplot(fig)
-
-# Seleccionar el tipo de gráfico para las ganancias
-opcion_ganancia = st.radio("Selecciona el tipo de gráfico para visualizar las ganancias según la especie", ('Escala Normal', 'Escala Logarítmica'), key='escala_ganancia')
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
 
 # Agrupar los datos por 'Especie' y sumar las ganancias
 ventas_por_especie = df.groupby('Especie')['Ganancia'].sum().sort_values()
 
-# Graficar de acuerdo a la opción seleccionada
-if opcion_ganancia == 'Escala Normal':
-    ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax)
-    ax.set_title('Ganancia por Especie (Escala Normal)')
-else:
-    ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax, logy=True)
-    ax.set_title('Ganancia por Especie (Escala Logarítmica)')
+# Convertir el resultado en un DataFrame para Plotly
+df_ventas = ventas_por_especie.reset_index()
+df_ventas.columns = ['Especie', 'Ganancia']
 
-# Personalizar el gráfico
-ax.set_xlabel('Especie')
-ax.set_ylabel('Ganancia (Suma Total)')
-ax.grid(True, axis='y', linestyle='--', alpha=0.6)
+# Seleccionar el tipo de gráfico para las ganancias
+opcion_ganancia = st.radio("Selecciona el tipo de gráfico para visualizar las ganancias según la especie", ('Escala Normal', 'Escala Logarítmica'), key='escala_ganancia')
+
+# Crear el gráfico interactivo con Plotly
+if opcion_ganancia == 'Escala Normal':
+    fig = px.bar(df_ventas, 
+                 x='Especie', 
+                 y='Ganancia', 
+                 title='Ganancia por Especie (Escala Normal)', 
+                 labels={'Ganancia': 'Ganancia (Suma Total)', 'Especie': 'Especie'},
+                 color='Ganancia',
+                 text='Ganancia')
+    fig.update_layout(xaxis_title='Especie', yaxis_title='Ganancia (Suma Total)', xaxis_tickangle=-45)
+else:
+    fig = px.bar(df_ventas, 
+                 x='Especie', 
+                 y='Ganancia', 
+                 title='Ganancia por Especie (Escala Logarítmica)', 
+                 labels={'Ganancia': 'Ganancia (Suma Total)', 'Especie': 'Especie'},
+                 color='Ganancia',
+                 text='Ganancia',
+                 log_y=True)
+    fig.update_layout(xaxis_title='Especie', yaxis_title='Ganancia (Suma Total) (Logarítmica)', xaxis_tickangle=-45)
 
 # Mostrar el gráfico en Streamlit
-st.pyplot(fig)
+st.plotly_chart(fig)
 
 # Selección de la especie
 especie_seleccionada = st.selectbox('Selecciona la especie', df['Especie'].unique())
@@ -97,31 +113,93 @@ for idx, row in df_filtrado.iterrows():
 # Mostrar el mapa en Streamlit
 folium_static(mapa)
 
+# Título de la aplicación
+st.title('Distribución de Precio por Kg ponderada por Volumen en Kg')
+
+# Crear el histograma ponderado
+fig = px.histogram(df, x='Precio_Kg', y='Volumen_Kg', 
+                   histfunc='sum', 
+                   nbins=24, 
+                   title='Distribución de Precio por Kg ponderada por Volumen en Kg')
+
+# Actualizar etiquetas del gráfico
+fig.update_layout(xaxis_title='Precio por Kg', 
+                  yaxis_title='Volumen en Kg', 
+                  bargap=0.1)
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
+
+# Título de la aplicación
+st.title('Distribución de Precio por Kg ponderada por Talla en cm')
+
+# Crear el histograma ponderado
+fig = px.histogram(df, x='Talla_cm', y='Volumen_Kg', 
+                   histfunc='sum', 
+                   nbins=24, 
+                   title='Distribución de Precio por Kg ponderada por Talla en cm')
+
+# Actualizar etiquetas del gráfico
+fig.update_layout(xaxis_title='Talla en cm', 
+                  yaxis_title='Volumen en Kg', 
+                  bargap=0.1)
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
+
+# Título de la aplicación
+st.title('Distribución de Precio por Kg ponderada por Millas Recorridas')
+
+# Crear el histograma ponderado
+fig = px.histogram(df, x='Millas_Recorridas', y='Volumen_Kg', 
+                   histfunc='sum', 
+                   nbins=24, 
+                   title='Distribución de Precio por Kg ponderada por Millas Recorridas')
+
+# Actualizar etiquetas del gráfico
+fig.update_layout(xaxis_title='Millas Recorridas', 
+                  yaxis_title='Volumen en Kg', 
+                  bargap=0.1)
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
+
 # Agrupar por Marca de Motor y Caballos de fuerza, sumando los kilos
 df_agrupado = df.groupby(['Marca_Motor', 'Caballos_Motor'])['Volumen_Kg'].sum().unstack()
+
+# Convertir el DataFrame a formato largo para Plotly
+df_agrupado_long = df_agrupado.reset_index().melt(id_vars='Marca_Motor', var_name='Caballos_Motor', value_name='Volumen_Kg')
 
 # Crear el selector de gráficos
 opcion = st.radio('Selecciona el tipo de gráfico para captura por caballos de motor:', ['Escala Normal', 'Escala Logarítmica'])
 
+# Crear el gráfico interactivo con Plotly
 if opcion == 'Escala Normal':
     st.subheader('Captura total por caballos de motor')
-    fig, ax = plt.subplots(figsize=(12, 7))
-    df_agrupado.plot(kind='bar', stacked=True, ax=ax, colormap='viridis')
-    ax.set_title('Captura total por Motor y Caballos de fuerza')
-    ax.set_xlabel('Motor')
-    ax.set_ylabel('Kilos')
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
-
-elif opcion == 'Escala Logarítmica':
+    fig = px.bar(df_agrupado_long, 
+                 x='Marca_Motor', 
+                 y='Volumen_Kg', 
+                 color='Caballos_Motor', 
+                 title='Captura total por Motor y Caballos de fuerza',
+                 labels={'Marca_Motor': 'Motor', 'Volumen_Kg': 'Kilos'},
+                 color_continuous_scale='viridis',
+                 text='Volumen_Kg')
+    fig.update_layout(xaxis_title='Motor', yaxis_title='Kilos', xaxis_tickangle=-45)
+else:
     st.subheader('Captura total por caballos de motor (Escala Logarítmica)')
-    fig, ax = plt.subplots(figsize=(12, 7))
-    df_agrupado.plot(kind='bar', stacked=True, ax=ax, colormap='viridis', logy=True)
-    ax.set_title('Captura total por caballos de motor (Escala Logarítmica)')
-    ax.set_xlabel('Motor')
-    ax.set_ylabel('Kilos')
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+    fig = px.bar(df_agrupado_long, 
+                 x='Marca_Motor', 
+                 y='Volumen_Kg', 
+                 color='Caballos_Motor', 
+                 title='Captura total por caballos de motor (Escala Logarítmica)',
+                 labels={'Marca_Motor': 'Motor', 'Volumen_Kg': 'Kilos'},
+                 color_continuous_scale='viridis',
+                 text='Volumen_Kg',
+                 log_y=True)
+    fig.update_layout(xaxis_title='Motor', yaxis_title='Kilos (Logarítmico)', xaxis_tickangle=-45)
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
 
 # Agrupar los datos
 ventas_por_embarcacion = df.groupby('Embarcacion')['Ganancia'].sum()
@@ -135,6 +213,9 @@ datos_combinados = pd.DataFrame({
     'Volumen de Capturas': volumen_por_embarcacion
 })
 
+# Convertir el DataFrame combinado a formato largo para Plotly
+datos_combinados_long = datos_combinados.reset_index().melt(id_vars='Embarcacion', var_name='Métrica', value_name='Valor')
+
 # Crear botones para seleccionar el gráfico
 opcion = st.radio('Selecciona el tipo de gráfico:', 
                   ['Ganancia por Embarcación', 
@@ -145,52 +226,86 @@ opcion = st.radio('Selecciona el tipo de gráfico:',
 # Mostrar el gráfico correspondiente
 if opcion == 'Ganancia por Embarcación':
     st.subheader('Ganancia por Embarcación')
-    fig, ax = plt.subplots(figsize=(10, 8))
-    ventas_por_embarcacion.sort_values().plot(kind='barh', ax=ax, colormap='viridis')
-    ax.set_title('Ganancia por Embarcación')
-    ax.set_xlabel('Ganancia')
-    ax.set_ylabel('Embarcación')
-    st.pyplot(fig)
+    fig = px.bar(ventas_por_embarcacion.reset_index(), 
+                 x='Embarcacion', 
+                 y='Ganancia', 
+                 title='Ganancia por Embarcación',
+                 labels={'Ganancia': 'Ganancia', 'Embarcacion': 'Embarcación'},
+                 color='Ganancia',
+                 text='Ganancia')
+    fig.update_layout(xaxis_title='Embarcación', yaxis_title='Ganancia', xaxis_tickangle=-45)
 
 elif opcion == 'Millas Recorridas por Embarcación':
     st.subheader('Millas Recorridas por Embarcación')
-    fig, ax = plt.subplots(figsize=(10, 8))
-    millas_por_embarcacion.sort_values().plot(kind='barh', ax=ax, colormap='plasma')
-    ax.set_title('Millas Recorridas por Embarcación')
-    ax.set_xlabel('Millas Recorridas')
-    ax.set_ylabel('Embarcación')
-    st.pyplot(fig)
+    fig = px.bar(millas_por_embarcacion.reset_index(), 
+                 x='Embarcacion', 
+                 y='Millas_Recorridas', 
+                 title='Millas Recorridas por Embarcación',
+                 labels={'Millas_Recorridas': 'Millas Recorridas', 'Embarcacion': 'Embarcación'},
+                 color='Millas_Recorridas',
+                 text='Millas_Recorridas')
+    fig.update_layout(xaxis_title='Embarcación', yaxis_title='Millas Recorridas', xaxis_tickangle=-45)
 
 elif opcion == 'Volumen de Capturas por Embarcación':
     st.subheader('Volumen de Capturas por Embarcación')
-    fig, ax = plt.subplots(figsize=(10, 8))
-    volumen_por_embarcacion.sort_values().plot(kind='barh', ax=ax, colormap='cividis')
-    ax.set_title('Volumen de Capturas por Embarcación')
-    ax.set_xlabel('Volumen (Kg)')
-    ax.set_ylabel('Embarcación')
-    st.pyplot(fig)
+    fig = px.bar(volumen_por_embarcacion.reset_index(), 
+                 x='Embarcacion', 
+                 y='Volumen_Kg', 
+                 title='Volumen de Capturas por Embarcación',
+                 labels={'Volumen_Kg': 'Volumen (Kg)', 'Embarcacion': 'Embarcación'},
+                 color='Volumen_Kg',
+                 text='Volumen_Kg')
+    fig.update_layout(xaxis_title='Embarcación', yaxis_title='Volumen (Kg)', xaxis_tickangle=-45)
 
 elif opcion == 'Barras Apiladas: Ganancia, Millas, Volumen':
     st.subheader('Barras Apiladas: Ganancia, Millas, Volumen por Embarcación')
-    fig, ax = plt.subplots(figsize=(10, 8))
-    datos_combinados.sort_values('Ganancia').plot(kind='barh', ax=ax, stacked=True, colormap='tab20c')
-    ax.set_title('Barras Apiladas: Ganancia, Millas, Volumen por Embarcación')
-    ax.set_xlabel('Valores')
-    ax.set_ylabel('Embarcación')
-    st.pyplot(fig)
+    fig = px.bar(datos_combinados_long, 
+                 x='Embarcacion', 
+                 y='Valor', 
+                 color='Métrica', 
+                 title='Barras Apiladas: Ganancia, Millas, Volumen por Embarcación',
+                 labels={'Valor': 'Valores', 'Embarcacion': 'Embarcación'},
+                 text='Valor')
+    fig.update_layout(xaxis_title='Embarcación', yaxis_title='Valores', xaxis_tickangle=-45)
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
 
 # Agrupar las ganancias por fecha de faena
-df_agrupado = df.groupby('Inicio_Faena')['Ganancia'].sum()
+df_agrupado = df.groupby('Inicio_Faena')['Ganancia'].sum().reset_index()
 
-# Graficar la distribución de ganancias por fecha de faena
-st.subheader('Distribución de ganancias por Fecha de Venta')
-fig, ax = plt.subplots(figsize=(12, 7))
-df_agrupado.plot(ax=ax, legend=True)
-ax.set_title('Distribución de ganancias por Fecha de Faena')
-ax.set_xlabel('Inicio_Venta')
-ax.set_ylabel('Ganancia')
-plt.xticks(rotation=45)
-st.pyplot(fig)
+# Crear el gráfico interactivo con Plotly
+st.subheader('Distribución de ganancias por Fecha de Faena')
+fig = px.line(df_agrupado, 
+              x='Inicio_Faena', 
+              y='Ganancia', 
+              title='Distribución de Ganancias por Fecha de Faena',
+              labels={'Inicio_Faena': 'Fecha de Faena', 'Ganancia': 'Ganancia'},
+              markers=True)
+
+# Personalizar el gráfico
+fig.update_layout(xaxis_title='Fecha de Faena', yaxis_title='Ganancia', xaxis_tickformat='%Y-%m-%d')
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
+
+# Agrupar las ganancias por fecha de faena
+df_agrupado = df.groupby('Inicio_Faena')['Costo_Combustible'].sum().reset_index()
+
+# Crear el gráfico interactivo con Plotly
+st.subheader('Distribución de Costo Combustible por Fecha de Faena')
+fig = px.line(df_agrupado, 
+              x='Inicio_Faena', 
+              y='Costo_Combustible', 
+              title='Distribución de Costo Combustible por Fecha de Faena',
+              labels={'Inicio_Faena': 'Fecha de Faena', 'Costo_Combustible': 'Costo_Combustible'},
+              markers=True)
+
+# Personalizar el gráfico
+fig.update_layout(xaxis_title='Fecha de Faena', yaxis_title='Costo Combustible', xaxis_tickformat='%Y-%m-%d')
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
 
 # Convertir la columna 'Inicio_Faena' y 'Fecha_Venta' a datetime
 df['Inicio_Faena'] = pd.to_datetime(df['Inicio_Faena'], format='%d %m %Y %H:%M')
@@ -206,6 +321,10 @@ df['HFloat_Venta'] = df['Hora_Venta'].apply(lambda x: x.hour + x.minute/60)
 
 # Crear un nuevo DataFrame eliminando las columnas 'Inicio_Faena', 'Inicio_Venta', 'Hora_Faena' y 'Hora_Venta'
 df_ = df.drop(columns=['Inicio_Faena', 'Inicio_Venta', 'Hora_Faena', 'Hora_Venta'])
+
+# Crear una tabla de frecuencias ponderada
+hist_data = df_.groupby('HFloat_Faena').apply(lambda x: (x['Volumen_Kg'] * len(x)).sum())
+hist_data = hist_data.reset_index(name='Volumen_Total')
 
 # Graficar la distribución de las faenas por hora del día
 st.subheader('Distribución de las faenas por Hora del Día')
@@ -240,15 +359,33 @@ st.write(df_normalized.head())
 
 # Calcular y graficar la matriz de correlación
 st.subheader('Matriz de Correlación')
-selected_columns = ['Caballos_Motor', 'Millas_Recorridas', 'Volumen_Kg', 'Precio_Kg', 'Talla_cm', 'Venta', 'Costo_Combustible', 'Ganancia', 'Tripulantes', 'HFloat_Faena', 'HFloat_Venta']
+
+# Seleccionar las columnas para la matriz de correlación
+selected_columns = ['Caballos_Motor', 'Millas_Recorridas', 'Volumen_Kg', 'Precio_Kg', 
+                    'Talla_cm', 'Venta', 'Costo_Combustible', 'Ganancia', 'Tripulantes', 
+                    'HFloat_Faena', 'HFloat_Venta', 'Origen_Latitud', 'Origen_Longuitud']
+
+# Calcular la matriz de correlación
 correlation_matrix = df_normalized[selected_columns].corr()
 
-fig, ax = plt.subplots(figsize=(10, 8))
-sns.heatmap(data=correlation_matrix, annot=True, mask=np.triu(np.ones_like(correlation_matrix, dtype=bool)),
-            cmap='magma', center=0, linewidths=0.3, annot_kws={"fontsize":12}, cbar_kws={"shrink": .7})
-plt.title("Correlación entre variables", fontsize=17, y=1.02)
-plt.tight_layout()
-st.pyplot(fig)
+# Crear el gráfico interactivo con Plotly
+fig = px.imshow(correlation_matrix,
+                labels={'x': 'Variables', 'y': 'Variables', 'color': 'Correlación'},
+                x=correlation_matrix.columns,
+                y=correlation_matrix.columns,
+                color_continuous_scale='Magma',
+                aspect='auto')
+
+# Personalizar el diseño del gráfico
+fig.update_layout(
+    title='Matriz de Correlación entre Variables',
+    coloraxis_showscale=True,
+    xaxis={'side': 'bottom'},
+    yaxis={'side': 'left'}
+)
+
+# Mostrar el gráfico en Streamlit
+st.plotly_chart(fig)
 
 # Descargar la matriz de correlación
 st.subheader('Descargar Matriz de Correlación')
@@ -320,46 +457,73 @@ if X is not None and y is not None:
         st.markdown("""
         Estas curvas muestran cómo de bien nuestro modelo está aprendiendo a predecir el volumen de captura. Si el error de validación es cercano al error de entrenamiento, significa que el modelo es bastante preciso y no se está sobreajustando a los datos de entrenamiento.
         """)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(range(1, len(train_errors) + 1), train_errors, label='Error de Entrenamiento')
-        ax.plot(range(1, len(val_errors) + 1), val_errors, label='Error de Validación')
-        ax.set_xlabel('Número de Árboles')
-        ax.set_ylabel('Error Cuadrático Medio')
-        ax.legend()
-        st.pyplot(fig)
+
+        fig = go.Figure()
+
+        # Añadir líneas para los errores de entrenamiento y validación
+        fig.add_trace(go.Scatter(x=list(range(1, len(train_errors) + 1)), y=train_errors, mode='lines', name='Error de Entrenamiento'))
+        fig.add_trace(go.Scatter(x=list(range(1, len(val_errors) + 1)), y=val_errors, mode='lines', name='Error de Validación'))
+
+        fig.update_layout(
+            xaxis_title='Número de Árboles',
+            yaxis_title='Error Cuadrático Medio',
+            title='Curvas de Entrenamiento y Validación',
+            template='plotly_dark'
+        )
+
+        st.plotly_chart(fig)
 
         # Importancia de características
         st.subheader(f'Importancia de Características - {seleccion} ({opcion})')
         st.markdown("""
         La importancia de características nos ayuda a entender cuáles variables son más influyentes en la predicción del volumen de captura. Estas son como los ingredientes principales de una receta, donde algunos tienen un mayor impacto en el resultado final.
         """)
+
         importances = modelo_rf.feature_importances_
         indices = X_train.columns
         feature_importances = pd.Series(importances, index=indices).sort_values(ascending=False)
         
         if 'Ganancia' in feature_importances.index:
             feature_importances = feature_importances.drop('Ganancia')
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        feature_importances.plot(kind='bar', ax=ax)
-        ax.set_title(f'Importancia de Características - {seleccion} ({opcion})')
-        ax.set_ylabel('Importancia')
-        st.pyplot(fig)
+
+        fig = go.Figure()
+
+        # Añadir las barras de importancia
+        fig.add_trace(go.Bar(x=feature_importances.index, y=feature_importances.values, marker_color='magenta'))
+
+        fig.update_layout(
+            xaxis_title='Características',
+            yaxis_title='Importancia',
+            title=f'Importancia de Características - {seleccion} ({opcion})',
+            template='plotly_dark'
+        )
+
+        st.plotly_chart(fig)
 
         # Valores reales vs predichos
         st.subheader(f'Valores Reales vs Predichos - {seleccion} ({opcion})')
         st.markdown("""
         Este gráfico compara nuestras predicciones con los valores reales observados. Si los puntos se alinean bien con la línea diagonal, significa que nuestro modelo está haciendo un buen trabajo prediciendo el volumen de captura.
         """)
+
         y_val_pred = modelo_rf.predict(X_val)
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.scatter(y_val, y_val_pred, alpha=0.5)
-        ax.plot([y_val.min(), y_val.max()], [y_val.min(), y_val.max()], 'r--', lw=2)
-        ax.set_xlabel('Valores Reales')
-        ax.set_ylabel('Valores Predichos')
-        ax.set_title(f'Valores Reales vs Predichos - {seleccion} ({opcion})')
-        st.pyplot(fig)
+
+        fig = go.Figure()
+
+        # Añadir puntos para valores reales vs predichos
+        fig.add_trace(go.Scatter(x=y_val, y=y_val_pred, mode='markers', name='Valores Reales vs Predichos', marker=dict(color='cyan', opacity=0.5)))
+
+        # Añadir línea de referencia
+        fig.add_trace(go.Scatter(x=[y_val.min(), y_val.max()], y=[y_val.min(), y_val.max()], mode='lines', name='Línea de Referencia', line=dict(color='red', dash='dash')))
+
+        fig.update_layout(
+            xaxis_title='Valores Reales',
+            yaxis_title='Valores Predichos',
+            title=f'Valores Reales vs Predichos - {seleccion} ({opcion})',
+            template='plotly_dark'
+        )
+
+        st.plotly_chart(fig)
 
         # Mostrar métricas del modelo
         st.subheader('Métricas del Modelo')
@@ -369,10 +533,11 @@ if X is not None and y is not None:
         - **MAE (Error Absoluto Medio):** Muestra el promedio de las diferencias absolutas entre las predicciones y los valores reales.
         - **R2 (Coeficiente de Determinación):** Nos dice qué tan bien las variables explican la variabilidad del resultado.
         """)
+
         mse = mean_squared_error(y_val, y_val_pred)
         mae = mean_absolute_error(y_val, y_val_pred)
         r2 = r2_score(y_val, y_val_pred)
-        
+
         st.write(f"MSE (Error Cuadrático Medio): {mse:.4f}")
         st.write(f"MAE (Error Absoluto Medio): {mae:.4f}")
         st.write(f"R2 (Coeficiente de Determinación): {r2:.4f}")
