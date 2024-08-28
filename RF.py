@@ -21,101 +21,180 @@ st.write("### Vista previa de los datos")
 st.write(df.head())
 
 # Agrupar por especie y aparejo, sumando los kilos
-df_agrupado = df.groupby(['Especie', 'Aparejo'])['Volumen_Kg'].sum().unstack()
+df_agrupado_kilos = df.groupby(['Especie', 'Aparejo'])['Volumen_Kg'].sum().unstack()
 
-# Graficar la captura total por especie
-st.subheader('Captura total por especie')
+# Ordenar los datos por la suma total de kilos para cada especie (de menor a mayor)
+df_agrupado_kilos = df_agrupado_kilos.loc[df_agrupado_kilos.sum(axis=1).sort_values().index]
+
+# Seleccionar el tipo de gráfico para los kilos
+opcion_kilos = st.radio("Selecciona el tipo de gráfico para kilos", ('Escala Lineal', 'Escala Logarítmica'), key='kilos')
+
+# Graficar de acuerdo a la opción seleccionada para los kilos
 fig, ax = plt.subplots(figsize=(12, 7))
-df_agrupado.plot(kind='bar', ax=ax, color='skyblue')
-ax.set_title('Captura total por especie')
+
+if opcion_kilos == 'Escala Lineal':
+    st.subheader('Captura total por especie')
+    df_agrupado_kilos.plot(kind='bar', ax=ax)
+    ax.set_title('Captura total por especie')
+    ax.set_ylabel('Kilos')
+else:
+    st.subheader('Captura total por especie (Escala Logarítmica)')
+    df_agrupado_kilos.plot(kind='bar', ax=ax, logy=True)
+    ax.set_title('Captura total por especie (Escala Logarítmica)')
+    ax.set_ylabel('Kilos')
+
 ax.set_xlabel('Especie')
-ax.set_ylabel('Kilos')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# Graficar en escala logarítmica
-st.subheader('Captura total por especie (Escala Logarítmica)')
-fig, ax = plt.subplots(figsize=(12, 7))
-df_agrupado.plot(kind='bar', ax=ax, color='skyblue', logy=True)
-ax.set_title('Captura total por especie (Escala Logarítmica)')
+# Seleccionar el tipo de gráfico para las ventas
+opcion_escala = st.radio("Selecciona el tipo de gráfico para las ventas", ('Escala Normal', 'Escala Logarítmica'), key='escala_ventas')
+
+# Agrupar los datos por 'Especie' y sumar las ventas
+ventas_por_especie = df.groupby('Especie')['Venta'].sum().sort_values()
+
+# Crear el gráfico de barras utilizando matplotlib
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Graficar de acuerdo a la opción seleccionada
+if opcion_escala == 'Escala Normal':
+    ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax)
+    ax.set_title('Ventas por Especie (Escala Normal)')
+else:
+    ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax, logy=True)
+    ax.set_title('Ventas por Especie (Escala Logarítmica)')
+
+# Personalizar el gráfico
 ax.set_xlabel('Especie')
-ax.set_ylabel('Kilos')
-plt.xticks(rotation=45)
+ax.set_ylabel('Venta (Suma Total)')
+ax.grid(True, axis='y', linestyle='--', alpha=0.6)
+
+# Mostrar el gráfico en Streamlit
 st.pyplot(fig)
 
 # Agrupar por Marca de Motor y Caballos de fuerza, sumando los kilos
 df_agrupado = df.groupby(['Marca_Motor', 'Caballos_Motor'])['Volumen_Kg'].sum().unstack()
 
-# Graficar captura total por Motor y Caballos de fuerza
-st.subheader('Captura total por Motor y Caballos de fuerza')
-fig, ax = plt.subplots(figsize=(12, 7))
-df_agrupado.plot(kind='bar', stacked=True, ax=ax, colormap='viridis')
-ax.set_title('Captura total por Motor y Caballos de fuerza')
-ax.set_xlabel('Motor')
-ax.set_ylabel('Kilos')
-plt.xticks(rotation=45)
-st.pyplot(fig)
+# Crear el selector de gráficos
+opcion = st.radio('Selecciona el tipo de gráfico para captura por caballos de motor:', ['Escala Normal', 'Escala Logarítmica'])
 
-# Graficar en escala logarítmica
-st.subheader('Captura total por Motor y Caballos de fuerza (Escala Logarítmica)')
-fig, ax = plt.subplots(figsize=(12, 7))
-df_agrupado.plot(kind='bar', stacked=True, ax=ax, colormap='viridis', logy=True)
-ax.set_title('Captura total por Motor y Caballos de fuerza (Escala Logarítmica)')
-ax.set_xlabel('Motor')
-ax.set_ylabel('Kilos')
-plt.xticks(rotation=45)
-st.pyplot(fig)
+if opcion == 'Escala Normal':
+    st.subheader('Captura total por caballos de motor')
+    fig, ax = plt.subplots(figsize=(12, 7))
+    df_agrupado.plot(kind='bar', stacked=True, ax=ax, colormap='viridis')
+    ax.set_title('Captura total por Motor y Caballos de fuerza')
+    ax.set_xlabel('Motor')
+    ax.set_ylabel('Kilos')
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
-fig, ax = plt.subplots()
-df['Millas_Recorridas'].hist(bins=20, ax=ax)
-ax.set_title('Distribución de Millas Recorridas')
-ax.set_xlabel('Millas Recorridas')
-ax.set_ylabel('Frecuencia')
-st.pyplot(fig)
+elif opcion == 'Escala Logarítmica':
+    st.subheader('Captura total por caballos de motor (Escala Logarítmica)')
+    fig, ax = plt.subplots(figsize=(12, 7))
+    df_agrupado.plot(kind='bar', stacked=True, ax=ax, colormap='viridis', logy=True)
+    ax.set_title('Captura total por caballos de motor (Escala Logarítmica)')
+    ax.set_xlabel('Motor')
+    ax.set_ylabel('Kilos')
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.boxplot(x='Especie', y='Precio_Kg', data=df, ax=ax)
-ax.set_title('Distribución de Precio por Kg por Especie')
-ax.set_xticks(ax.get_xticks())
-ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-st.pyplot(fig)
+# Agrupar los datos
+ventas_por_embarcacion = df.groupby('Embarcacion')['Ganancia'].sum()
+millas_por_embarcacion = df.groupby('Embarcacion')['Millas_Recorridas'].sum()
+volumen_por_embarcacion = df.groupby('Embarcacion')['Volumen_Kg'].sum()
 
-fig, ax = plt.subplots()
-ax.scatter(df['Millas_Recorridas'], df['Ganancia'])
-ax.set_title('Millas Recorridas vs Ganancia')
-ax.set_xlabel('Millas Recorridas')
-ax.set_ylabel('Ganancia')
-st.pyplot(fig)
+# Crear un DataFrame combinado
+datos_combinados = pd.DataFrame({
+    'Ganancia': ventas_por_embarcacion,
+    'Millas Recorridas': millas_por_embarcacion,
+    'Volumen de Capturas': volumen_por_embarcacion
+})
+
+# Crear botones para seleccionar el gráfico
+opcion = st.radio('Selecciona el tipo de gráfico:', 
+                  ['Ganancia por Embarcación', 
+                   'Millas Recorridas por Embarcación', 
+                   'Volumen de Capturas por Embarcación',
+                   'Barras Apiladas: Ganancia, Millas, Volumen'])
+
+# Mostrar el gráfico correspondiente
+if opcion == 'Ganancia por Embarcación':
+    st.subheader('Ganancia por Embarcación')
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ventas_por_embarcacion.sort_values().plot(kind='barh', ax=ax, colormap='viridis')
+    ax.set_title('Ganancia por Embarcación')
+    ax.set_xlabel('Ganancia')
+    ax.set_ylabel('Embarcación')
+    st.pyplot(fig)
+
+elif opcion == 'Millas Recorridas por Embarcación':
+    st.subheader('Millas Recorridas por Embarcación')
+    fig, ax = plt.subplots(figsize=(10, 8))
+    millas_por_embarcacion.sort_values().plot(kind='barh', ax=ax, colormap='plasma')
+    ax.set_title('Millas Recorridas por Embarcación')
+    ax.set_xlabel('Millas Recorridas')
+    ax.set_ylabel('Embarcación')
+    st.pyplot(fig)
+
+elif opcion == 'Volumen de Capturas por Embarcación':
+    st.subheader('Volumen de Capturas por Embarcación')
+    fig, ax = plt.subplots(figsize=(10, 8))
+    volumen_por_embarcacion.sort_values().plot(kind='barh', ax=ax, colormap='cividis')
+    ax.set_title('Volumen de Capturas por Embarcación')
+    ax.set_xlabel('Volumen (Kg)')
+    ax.set_ylabel('Embarcación')
+    st.pyplot(fig)
+
+elif opcion == 'Barras Apiladas: Ganancia, Millas, Volumen':
+    st.subheader('Barras Apiladas: Ganancia, Millas, Volumen por Embarcación')
+    fig, ax = plt.subplots(figsize=(10, 8))
+    datos_combinados.sort_values('Ganancia').plot(kind='barh', ax=ax, stacked=True, colormap='tab20c')
+    ax.set_title('Barras Apiladas: Ganancia, Millas, Volumen por Embarcación')
+    ax.set_xlabel('Valores')
+    ax.set_ylabel('Embarcación')
+    st.pyplot(fig)
 
 # Agrupar las ganancias por fecha de faena
 df_agrupado = df.groupby('Inicio_Faena')['Ganancia'].sum()
 
 # Graficar la distribución de ganancias por fecha de faena
-st.subheader('Distribución de ganancias por Fecha de Faena')
+st.subheader('Distribución de ganancias por Fecha de Venta')
 fig, ax = plt.subplots(figsize=(12, 7))
 df_agrupado.plot(ax=ax, legend=True)
 ax.set_title('Distribución de ganancias por Fecha de Faena')
-ax.set_xlabel('Inicio_Faena')
+ax.set_xlabel('Inicio_Venta')
 ax.set_ylabel('Ganancia')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# Convertir la columna 'Inicio_Faena' a datetime
+# Convertir la columna 'Inicio_Faena' y 'Fecha_Venta' a datetime
 df['Inicio_Faena'] = pd.to_datetime(df['Inicio_Faena'], format='%d %m %Y %H:%M')
+df['Inicio_Venta'] = pd.to_datetime(df['Inicio_Venta'], format='%d %m %Y %H:%M')
 
-# Agregar una nueva columna 'Hora' con solo la hora de 'Inicio_Faena'
-df['Hora'] = df['Inicio_Faena'].dt.time
+# Agregar una nueva columna 'Hora_Faena' y 'Hora_Venta' con solo la hora de 'Inicio_Faena' y 'Fecha_Venta'
+df['Hora_Faena'] = df['Inicio_Faena'].dt.time
+df['Hora_Venta'] = df['Inicio_Venta'].dt.time
 
-# Transformar la columna 'Hora' en un valor flotante (hora + minutos/60)
-df['Hora_Float'] = df['Hora'].apply(lambda x: x.hour + x.minute/60)
+# Transformar la columna 'Hora_Faena' y 'Hora_Venta' en un valor flotante (hora + minutos/60)
+df['HFloat_Faena'] = df['Hora_Faena'].apply(lambda x: x.hour + x.minute/60)
+df['HFloat_Venta'] = df['Hora_Venta'].apply(lambda x: x.hour + x.minute/60)
 
-# Crear un nuevo DataFrame eliminando las columnas 'Inicio_Faena' y 'Hora'
-df_ = df.drop(columns=['Inicio_Faena', 'Hora'])
+# Crear un nuevo DataFrame eliminando las columnas 'Inicio_Faena', 'Inicio_Venta', 'Hora_Faena' y 'Hora_Venta'
+df_ = df.drop(columns=['Inicio_Faena', 'Inicio_Venta', 'Hora_Faena', 'Hora_Venta'])
+
+# Graficar la distribución de las faenas por hora del día
+st.subheader('Distribución de las faenas por Hora del Día')
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.histplot(df_, x='HFloat_Faena', weights='Volumen_Kg', bins=24, kde=True)
+ax.set_xlabel('Hora del Día')
+ax.set_ylabel('Distribución de las faenas')
+ax.set_title('Distribución de las faenas por Hora del Día')
+st.pyplot(fig)
 
 # Graficar la distribución de las ventas por hora del día
 st.subheader('Distribución de las Ventas por Hora del Día')
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.histplot(df_, x='Hora_Float', weights='Venta', bins=24, kde=True)
+sns.histplot(df_, x='HFloat_Venta', weights='Venta', bins=24, kde=True)
 ax.set_xlabel('Hora del Día')
 ax.set_ylabel('Distribución de las Ventas')
 ax.set_title('Distribución de las Ventas por Hora del Día')
@@ -136,7 +215,7 @@ st.write(df_normalized.head())
 
 # Calcular y graficar la matriz de correlación
 st.subheader('Matriz de Correlación')
-selected_columns = ['Caballos_Motor', 'Millas_Recorridas', 'Volumen_Kg', 'Precio_Kg', 'Talla_cm', 'Venta', 'Costo_Combustible', 'Ganancia', 'Tripulantes', 'Hora_Float']
+selected_columns = ['Caballos_Motor', 'Millas_Recorridas', 'Volumen_Kg', 'Precio_Kg', 'Talla_cm', 'Venta', 'Costo_Combustible', 'Ganancia', 'Tripulantes', 'HFloat_Faena', 'HFloat_Venta']
 correlation_matrix = df_normalized[selected_columns].corr()
 
 fig, ax = plt.subplots(figsize=(10, 8))
@@ -162,6 +241,16 @@ if opcion == "Embarcación":
     seleccion = st.selectbox("Seleccionar la embarcación", df_normalized['Embarcacion'].unique(), key="embarcacion_selectbox")
 else:
     seleccion = st.selectbox("Seleccionar la especie", df_normalized['Especie'].unique(), key="especie_selectbox")
+
+# Mostrar la imagen si la opción es "Especie"
+if opcion == "Especie":
+    especie_seleccionada = seleccion
+    ruta_imagen = f"resources/{especie_seleccionada}.png"
+    
+    try:
+        st.image(ruta_imagen, caption=f"Especie: {especie_seleccionada}", use_column_width=True)
+    except FileNotFoundError:
+        st.error(f"No se encontró la imagen para la especie: {especie_seleccionada}")
 
 def procesar_datos(df, seleccion, es_embarcacion=True):
     if es_embarcacion:
