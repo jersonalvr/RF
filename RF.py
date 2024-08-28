@@ -3,6 +3,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
+import folium
+from streamlit_folium import folium_static
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -57,9 +59,6 @@ opcion_ganancia = st.radio("Selecciona el tipo de gráfico para visualizar las g
 # Agrupar los datos por 'Especie' y sumar las ganancias
 ventas_por_especie = df.groupby('Especie')['Ganancia'].sum().sort_values()
 
-# Crear el gráfico de barras utilizando matplotlib
-fig, ax = plt.subplots(figsize=(10, 6))
-
 # Graficar de acuerdo a la opción seleccionada
 if opcion_ganancia == 'Escala Normal':
     ventas_por_especie.plot(kind='bar', color='skyblue', ax=ax)
@@ -75,6 +74,28 @@ ax.grid(True, axis='y', linestyle='--', alpha=0.6)
 
 # Mostrar el gráfico en Streamlit
 st.pyplot(fig)
+
+# Selección de la especie
+especie_seleccionada = st.selectbox('Selecciona la especie', df['Especie'].unique())
+
+# Filtrar los datos según la especie seleccionada
+df_filtrado = df[df['Especie'] == especie_seleccionada]
+
+# Crear el gráfico de barras utilizando matplotlib
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Crear el mapa centrado en la ubicación media
+mapa = folium.Map(location=[df_filtrado['Origen_Latitud'].mean(), df_filtrado['Origen_Longuitud'].mean()], zoom_start=6)
+
+# Añadir marcadores al mapa
+for idx, row in df_filtrado.iterrows():
+    folium.Marker(
+        location=[row['Origen_Latitud'], row['Origen_Longuitud']],
+        popup=row['Origen']
+    ).add_to(mapa)
+
+# Mostrar el mapa en Streamlit
+folium_static(mapa)
 
 # Agrupar por Marca de Motor y Caballos de fuerza, sumando los kilos
 df_agrupado = df.groupby(['Marca_Motor', 'Caballos_Motor'])['Volumen_Kg'].sum().unstack()
