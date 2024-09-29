@@ -20,7 +20,7 @@ Esta aplicación permite visualizar la importancia de las características en un
 """)
 
 # Cargar los datos
-df = pd.read_excel('datapp.xlsx')
+df = pd.read_excel('data.xlsx')
 
 # Función para categorizar horas en intervalos de 2 horas
 def categorize_hour(hour):
