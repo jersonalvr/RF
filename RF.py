@@ -229,6 +229,16 @@ else:
     seleccion = st.selectbox("Seleccionar la especie", df['Especie'].unique(), key="especie_selectbox")
     df_seleccion = df[df['Especie'] == seleccion]
 
+# Mostrar la imagen si la opción es "Especie"
+if opcion == "Especie":
+    especie_seleccionada = seleccion
+    ruta_imagen = f"resources/{especie_seleccionada}.png"
+    
+    try:
+        st.image(ruta_imagen, caption=f"Especie: {especie_seleccionada}", use_column_width=True)
+    except FileNotFoundError:
+        st.error(f"No se encontró la imagen para la especie: {especie_seleccionada}")
+
 # Mostrar el mapa centrado en la ubicación de las capturas
 st.subheader(f"Mapa de capturas para la selección: {seleccion}")
 mapa = folium.Map(location=[df_seleccion['Origen_Latitud'].mean(), df_seleccion['Origen_Longuitud'].mean()], zoom_start=6)
