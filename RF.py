@@ -63,6 +63,16 @@ st.markdown("""
 - **Índice de Captura por Unidad de Esfuerzo (CPUE):** Calculado en función del volumen de captura, las millas recorridas y el tiempo de faena.
 """)
 
+# Fuentes de datos utilizados
+st.write("### Fuentes de Datos")
+st.markdown("""
+- **Temperatura del Agua y Salinidad:** Datos basados en rangos típicos de la región costera de Perú, utilizando información de instituciones como NOAA (Administración Nacional Oceánica y Atmosférica de EE.UU.) y Copernicus.
+- **Velocidad del Viento:** Simulación ajustada en función de las horas de la faena, tomando como referencia rangos históricos de servicios como Windy y Copernicus.
+- **Corriente Marina:** Simulaciones basadas en datos típicos de las corrientes marinas en la costa del Pacífico, extraídos de fuentes como Copernicus.
+- **Profundidad:** Estimaciones basadas en datos geográficos de la costa de Perú.
+- **CPUE:** Calculado en base a los datos proporcionados de volumen capturado, millas recorridas, y tiempo de faena.
+""")
+
 # Descripción de los Cálculos
 st.write("### Descripción de los Cálculos")
 
