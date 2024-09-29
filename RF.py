@@ -20,7 +20,7 @@ Esta aplicación permite visualizar la importancia de las características en un
 """)
 
 # Cargar los datos
-df = pd.read_excel('data.xlsx')
+df = pd.read_excel('datapp.xlsx')
 
 # Función para categorizar horas en intervalos de 2 horas
 def categorize_hour(hour):
@@ -60,7 +60,7 @@ st.markdown("""
 - **Salinidad (PSU):** Rango entre 30 y 35 PSU.
 - **Velocidad del Viento (m/s):** Rango de 1 a 10 m/s.
 - **Corriente Marina (m/s):** Entre 0.1 y 1.5 m/s.
-- **Índice de Captura por Unidad de Esfuerzo (CPUE):** Calculado en función del volumen de captura, las millas recorridas y el número de tripulantes.
+- **Índice de Captura por Unidad de Esfuerzo (CPUE):** Calculado en función del volumen de captura, las millas recorridas y el tiempo de faena.
 """)
 
 # Descripción de los Cálculos
@@ -110,7 +110,7 @@ st.write("### Análisis Estadístico Descriptivo")
 numerical_columns = ['Temperatura_Agua_°C', 'Profundidad_m', 'Salinidad_PSU',
                     'Velocidad_Viento_m_s', 'Corriente_Marina_m_s', 'CPUE',
                     'Caballos_Motor', 'Millas_Recorridas', 'Precio_Kg',
-                    'Talla_cm', 'Costo_Combustible', 'Ganancia', 'Tripulantes']
+                    'Talla_cm', 'Costo_Combustible', 'Ganancia']
 
 selected_var = st.multiselect("Selecciona las variables para visualizar", numerical_columns, default=numerical_columns[:3])
 
@@ -291,8 +291,11 @@ st.markdown("""
 - **Coeficiente de Determinación (R²):** Indica la proporción de la variabilidad de la variable dependiente que es explicada por el modelo. Un valor cercano a 1 sugiere un buen ajuste.
 """)
 
+st.subheader(f'Valores Reales vs Predichos - {seleccion} ({opcion})')
+st.markdown("""
+Este gráfico compara nuestras predicciones con los valores reales observados. Si los puntos se alinean bien con la línea diagonal, significa que nuestro modelo está haciendo un buen trabajo prediciendo el volumen de captura.
+""")
 # Gráfico de Valores Reales vs Predichos
-st.write("#### Valores Reales vs Predichos")
 fig_real_vs_pred = px.scatter(x=y_val, y=y_pred, labels={'x': 'Valores Reales', 'y': 'Valores Predichos'},
                               title='Valores Reales vs Predichos')
 fig_real_vs_pred.add_shape(type="line",
@@ -332,7 +335,7 @@ fig_learning.update_layout(title='Curvas de Aprendizaje',
 st.plotly_chart(fig_learning)
 
 # Predicción con el formulario
-st.subheader("Formulario para predicciones personalizadas")
+st.subheader(f'Formulario para predicciones personalizadas - {seleccion} ({opcion})')
 caballos_motor = st.slider("Caballos de Motor", 10, 50, 20)
 millas_recorridas = st.slider("Millas Recorridas", 1, 100, 10)
 precio_kg = st.slider("Precio por Kg", 1.0, 50.0, 15.0)
@@ -346,15 +349,33 @@ velocidad_viento = st.slider("Velocidad del Viento (m/s)", 1.0, 20.0, 5.0)
 corriente_marina = st.slider("Corriente Marina (m/s)", 0.1, 2.0, 0.5)
 cpue = st.slider("Índice CPUE", 0.1, 5.0, 1.0)
 
-# Crear un nuevo conjunto de datos con los valores ingresados
-nuevos_datos = np.array([[caballos_motor, millas_recorridas, precio_kg, talla_cm, costo_combustible, ganancia, 
-                         temperatura_agua, profundidad, salinidad, velocidad_viento, corriente_marina, cpue]])
+# Crear un diccionario con los valores ingresados
+nuevos_datos_dict = {
+    'Caballos_Motor': caballos_motor,
+    'Millas_Recorridas': millas_recorridas,
+    'Precio_Kg': precio_kg,
+    'Talla_cm': talla_cm,
+    'Costo_Combustible': costo_combustible,
+    'Ganancia': ganancia,
+    'Temperatura_Agua_°C': temperatura_agua,
+    'Profundidad_m': profundidad,
+    'Salinidad_PSU': salinidad,
+    'Velocidad_Viento_m_s': velocidad_viento,
+    'Corriente_Marina_m_s': corriente_marina,
+    'CPUE': cpue
+}
 
-# Normalizar los nuevos datos
-nuevos_datos_normalizados = scaler.transform(nuevos_datos)
+# Convertir el diccionario a un DataFrame
+nuevos_datos_df = pd.DataFrame([nuevos_datos_dict])
+
+# Normalizar los nuevos datos usando el scaler ya ajustado
+nuevos_datos_normalizados = scaler.transform(nuevos_datos_df[selected_columns])
+
+# Convertir a DataFrame con los mismos nombres de columnas
+nuevos_datos_normalizados_df = pd.DataFrame(nuevos_datos_normalizados, columns=selected_columns)
 
 # Predicción del modelo con los datos ingresados
-prediccion_nueva = modelo_rf.predict(nuevos_datos_normalizados)
+prediccion_nueva = modelo_rf.predict(nuevos_datos_normalizados_df)
 st.write(f"**Predicción del Volumen Capturado (Kg) basado en los datos ingresados:** {prediccion_nueva[0]:.2f}")
 
 # Gráfico de importancia de características
@@ -362,7 +383,14 @@ importances = modelo_rf.feature_importances_
 indices = X.columns
 feature_importances = pd.Series(importances, index=indices).sort_values(ascending=False)
 
-st.subheader('Importancia de Características')
+st.subheader(f'Importancia de Características - {seleccion} ({opcion})')
+st.markdown("""
+La importancia de características nos ayuda a entender cuáles variables son más influyentes en la predicción del volumen de captura. Estas son como los ingredientes principales de una receta, donde algunos tienen un mayor impacto en el resultado final.
+""")
 fig = px.bar(feature_importances, x=feature_importances.index, y=feature_importances.values,
              title="Importancia de las Características para Predicción")
 st.plotly_chart(fig)
+
+# Mostrar la característica más influyente
+caracteristica_principal = feature_importances.idxmax()
+st.markdown(f"**La característica más influyente es:** `{caracteristica_principal}`, lo que indica que esta variable tiene el mayor impacto en la predicción del volumen de captura.")
