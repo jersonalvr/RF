@@ -15,8 +15,7 @@ import plotly.graph_objects as go
 
 st.set_page_config(
         page_title="Modelo para Pesca Artesanal",
-        page_icon="🎣",
-        layout="wide"
+        page_icon="🎣"
     )
 
 # Título y descripción de la aplicación
