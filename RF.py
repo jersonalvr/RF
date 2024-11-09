@@ -13,6 +13,12 @@ from sklearn.model_selection import learning_curve
 import plotly.express as px
 import plotly.graph_objects as go
 
+st.set_page_config(
+        page_title="Modelo para Pesca Artesanal",
+        page_icon="🎣",
+        layout="wide"
+    )
+
 # Título y descripción de la aplicación
 st.title('Modelo de Random Forest para Pesca Artesanal en Coishco')
 st.write("""
